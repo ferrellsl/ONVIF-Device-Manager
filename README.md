@@ -16,6 +16,8 @@ This is that ODM, brought up to date:
 - **What's playing, on the video.** The codec and size of the stream, as the
   decoder sees it (for example `H.265  2560x1440`), at the top right of the
   video.
+- **Full screen.** Double-click the video, or press F11, to fill the screen with
+  it; Esc, F11 or another double-click goes back.
 - **Better discovery.** Some cameras never answer the network-wide discovery
   probe, only one sent straight to them. After the usual probe, ODM now also
   probes every address of your local network directly, so those cameras show
@@ -31,7 +33,7 @@ This is that ODM, brought up to date:
 
 ## Installing
 
-Download `ODM-2.3.1-setup.exe` from the [Releases](../../releases) page and run
+Download `ODM-2.3.2-setup.exe` from the [Releases](../../releases) page and run
 it. It needs 64-bit Windows 10 or 11 with .NET Framework 4.8 (part of Windows
 10 since the May 2019 update, and of Windows 11). Everything else, including
 FFmpeg and the Visual C++ runtime, comes with it.
