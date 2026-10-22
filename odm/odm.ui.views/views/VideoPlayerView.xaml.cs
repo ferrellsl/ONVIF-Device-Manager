@@ -53,6 +53,9 @@ namespace odm.ui.activities {
 		}
 		IPlaybackSession playbackSession;
 		public LocalVideoPlayer Strings { get { return LocalVideoPlayer.instance; } }
+
+		/// <summary>what the player says it is decoding, e.g. "H.265  2560x1440" (empty until the first frame)</summary>
+		public string StreamInfo { get { return streamInfo.Text ?? ""; } }
 		public void Init(Model model) {
 			OnCompleted += () => {
 				try {

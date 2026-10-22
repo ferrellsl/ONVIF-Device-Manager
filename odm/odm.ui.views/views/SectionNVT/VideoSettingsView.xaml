@@ -13,8 +13,13 @@
 	d:DesignWidth="736" VerticalAlignment="Stretch">
 
     <DockPanel>
+        <Border DockPanel.Dock="Bottom" Name="codecWarning" Visibility="Collapsed" Margin="0,4,0,4" Padding="6,3,6,3"
+                Background="#FFFFF3CD" BorderBrush="#FFE0A800" BorderThickness="1" CornerRadius="3">
+            <TextBlock Name="codecWarningText" TextWrapping="Wrap" Foreground="#FF5C4400"/>
+        </Border>
         <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal">
             <Button 
+                Name="applyButton"
                 cmd:Click.Command="{Binding ApplyCommand, ElementName=ctrl}"
                 IsEnabled="{Binding IsModified}"
                 Content="{Binding ButtonsStrings.save, ElementName=ctrl}" HorizontalAlignment="Left" Style="{StaticResource ButtonLeft}"/>

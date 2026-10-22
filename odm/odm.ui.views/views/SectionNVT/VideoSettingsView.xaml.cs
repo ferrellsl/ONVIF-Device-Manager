@@ -52,11 +52,14 @@ namespace odm.ui.activities {
 			encResolutions = new List<EncoderResolutionPair>();
 			var applyCmd = new DelegateCommand(
 				() => {
+					if (codecMismatch) {
+						return;
+					}
 					model.encoder = EncoderResolution.Encoder;
 					model.resolution = EncoderResolution.Resolution;
 					Success(new Result.Apply(model));
 				},
-				() => true
+				() => !codecMismatch
 			);
 			ApplyCommand = applyCmd;
 
@@ -85,6 +88,71 @@ namespace odm.ui.activities {
 
 			BindData(model);
 			VideoStartup(model);
+			WatchStreamCodec(model, applyCmd);
+		}
+
+		bool codecMismatch = false;
+
+		/// <summary>
+		/// The encoding a camera reports here (the ONVIF media service of 2013 knows only
+		/// JPEG, MPEG-4 and H.264) isn't always what it streams: an H.265 camera reports
+		/// H264. The decoder knows the real codec, so when they differ the page says so
+		/// and Apply is turned off - applying would send the camera the wrong encoding.
+		/// </summary>
+		void WatchStreamCodec(Model model, DelegateCommand applyCmd) {
+			var timer = new System.Windows.Threading.DispatcherTimer { Interval = TimeSpan.FromMilliseconds(500) };
+			timer.Tick += (s, e) => {
+				var playerView = FindPlayerView(player);
+				var info = playerView != null ? playerView.StreamInfo : "";
+				if (String.IsNullOrEmpty(info)) {
+					return;
+				}
+				var codec = info.Split(' ')[0];
+				VideoEncoding? streamed = null;
+				switch (codec) {
+					case "H.264": streamed = VideoEncoding.h264; break;
+					case "MJPEG": streamed = VideoEncoding.jpeg; break;
+					case "MPEG-4": streamed = VideoEncoding.mpeg4; break;
+				}
+				var mismatch = streamed != model.origin.encoder;
+				if (mismatch != codecMismatch) {
+					codecMismatch = mismatch;
+					applyCmd.RaiseCanExecuteChanged();
+					if (mismatch) {
+						codecWarningText.Text = String.Format(
+							"The camera reports {0} here but is streaming {1} (see the video). Settings can't be applied from this page " +
+							"without changing the camera's encoding, so Apply is off: change them in the camera's own web page.",
+							model.origin.encoder.ToString().ToUpperInvariant(), codec);
+					}
+					codecWarning.Visibility = mismatch ? Visibility.Visible : Visibility.Collapsed;
+					if (!mismatch) {
+						applyButton.SetBinding(Button.IsEnabledProperty, new System.Windows.Data.Binding("IsModified"));	//(as in the XAML)
+					}
+				}
+				if (mismatch) {
+					applyButton.IsEnabled = false;
+				}
+			};
+			timer.Start();
+			disposables.Add(Disposable.Create(timer.Stop));
+		}
+
+		static VideoPlayerView FindPlayerView(DependencyObject parent) {
+			if (parent == null) {
+				return null;
+			}
+			var found = parent as VideoPlayerView;
+			if (found != null) {
+				return found;
+			}
+			var count = VisualTreeHelper.GetChildrenCount(parent);
+			for (int i = 0; i < count; ++i) {
+				found = FindPlayerView(VisualTreeHelper.GetChild(parent, i));
+				if (found != null) {
+					return found;
+				}
+			}
+			return null;
 		}
 		
 		void VideoStartup(Model model) {
