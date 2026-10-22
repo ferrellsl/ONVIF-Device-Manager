@@ -24,7 +24,7 @@
     type OpenFileActivity() = class
         static member Run(title:string, filter:string) = async{
             let disp = Application.Current.Dispatcher
-            return! disp.InvokeAsync(fun ()->
+            return! disp.AsyncInvoke(fun ()->
                 let dlg = new OpenFileDialog()
                 dlg.Title <- title
                 //dlg.InitialDirectory <- Directory.GetCurrentDirectory()

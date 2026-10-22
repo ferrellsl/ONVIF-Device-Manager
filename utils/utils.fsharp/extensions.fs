@@ -841,7 +841,8 @@
     end
     
     type System.Windows.Threading.Dispatcher with
-        member this.InvokeAsync f = async{
+        ///<summary>(not InvokeAsync: since .NET 4.5 Dispatcher has its own, which would win)</summary>
+        member this.AsyncInvoke f = async{
             let disp = new SerialDisposable()
             use! cancellation = Async.OnCancel(fun()->
                 disp.Dispose()

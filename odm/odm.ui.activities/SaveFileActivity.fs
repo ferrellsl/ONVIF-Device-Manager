@@ -24,7 +24,7 @@
     type SaveFileActivity() = class
         static member Run(filter:string) = async{
             let disp = Application.Current.Dispatcher
-            return! disp.InvokeAsync(fun ()->
+            return! disp.AsyncInvoke(fun ()->
                 let dlg = new SaveFileDialog()
                 //dlg.InitialDirectory <- Directory.GetCurrentDirectory()
                 dlg.Filter <- filter

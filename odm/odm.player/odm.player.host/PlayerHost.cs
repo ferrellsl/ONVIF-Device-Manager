@@ -199,7 +199,7 @@ namespace odm.player {
 				UseShellExecute = false,
 				Arguments = String.Join(" ", hostProcessArgs.Format()),
 			};
-			pi.EnvironmentVariables["PATH"] = String.Join("; ", Bootstrapper.specialFolders.dlls.Select(sfd => sfd.directory.FullName).Append(pi.EnvironmentVariables["PATH"]));
+			pi.EnvironmentVariables["PATH"] = String.Join("; ", utils.EnumerableExtensions.Append(Bootstrapper.specialFolders.dlls.Select(sfd => sfd.directory.FullName), pi.EnvironmentVariables["PATH"]));
 
 			StartHostProcess(pi);
 			return Disposable.Create(() => {

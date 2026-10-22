@@ -6,3 +6,7 @@ obj/
 Release/
 Debug/
 x64/
+
+# FFmpeg build output except what the player needs
+libs/ffmpeg/share/
+libs/ffmpeg/lib/pkgconfig/

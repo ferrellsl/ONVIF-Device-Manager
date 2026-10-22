@@ -10,7 +10,7 @@
     <AppDesignerFolder>Properties</AppDesignerFolder>
     <RootNamespace>odm.ui</RootNamespace>
     <AssemblyName>odm</AssemblyName>
-    <TargetFrameworkVersion>v4.0</TargetFrameworkVersion>
+    <TargetFrameworkVersion>v4.8</TargetFrameworkVersion>
     <TargetFrameworkProfile>
     </TargetFrameworkProfile>
     <FileAlignment>512</FileAlignment>
@@ -48,8 +48,7 @@
   </PropertyGroup>
   <PropertyGroup>
     <UseVSHostingProcess>false</UseVSHostingProcess>
-    <ffmpegDir Condition="'$(Platform)' == 'x86'">..\..\libs\ffmpeg-git-a5c1a0c\win32\bin</ffmpegDir>
-    <ffmpegDir Condition="'$(Platform)' == 'x64'">..\..\libs\ffmpeg-git-a5c1a0c\x64\bin</ffmpegDir>
+    <ffmpegDir>..\..\libs\ffmpeg\bin</ffmpegDir>
     <OutputPath>bin\$(Configuration)\$(Platform)\</OutputPath>
     <DebugSymbols Condition="'$(Configuration)' == 'Debug'">true</DebugSymbols>
     <DebugSymbols Condition="'$(Configuration)' == 'Release'">false</DebugSymbols>
@@ -65,6 +64,7 @@
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="FSharp.Core">
+      <HintPath>..\..\libs\FSharp.Core\FSharp.Core.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="Microsoft.CSharp" />
@@ -398,36 +398,20 @@
     </Page>
   </ItemGroup>
   <ItemGroup>
-    <Content Include="$(ffmpegDir)\avcodec-54.dll">
-      <Link>3rd\avcodec-54.dll</Link>
+    <Content Include="$(ffmpegDir)\avcodec-61.dll">
+      <Link>3rd\avcodec-61.dll</Link>
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
-    <Content Include="$(ffmpegDir)\avdevice-54.dll">
-      <Link>3rd\avdevice-54.dll</Link>
+    <Content Include="$(ffmpegDir)\avformat-61.dll">
+      <Link>3rd\avformat-61.dll</Link>
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
-    <Content Include="$(ffmpegDir)\avfilter-2.dll">
-      <Link>3rd\avfilter-2.dll</Link>
+    <Content Include="$(ffmpegDir)\avutil-59.dll">
+      <Link>3rd\avutil-59.dll</Link>
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
-    <Content Include="$(ffmpegDir)\avformat-54.dll">
-      <Link>3rd\avformat-54.dll</Link>
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
-    <Content Include="$(ffmpegDir)\avutil-51.dll">
-      <Link>3rd\avutil-51.dll</Link>
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
-    <Content Include="$(ffmpegDir)\postproc-52.dll">
-      <Link>3rd\postproc-52.dll</Link>
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
-    <Content Include="$(ffmpegDir)\swresample-0.dll">
-      <Link>3rd\swresample-0.dll</Link>
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
-    <Content Include="$(ffmpegDir)\swscale-2.dll">
-      <Link>3rd\swscale-2.dll</Link>
+    <Content Include="$(ffmpegDir)\swscale-8.dll">
+      <Link>3rd\swscale-8.dll</Link>
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
   </ItemGroup>

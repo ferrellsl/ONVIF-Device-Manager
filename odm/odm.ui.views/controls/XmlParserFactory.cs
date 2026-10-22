@@ -90,7 +90,7 @@ namespace odm.ui.controls {
 						elem.IsEnabled = true;
 						if (config.parameters != null && config.parameters.simpleItem != null) {
 							var items = config.parameters.simpleItem;
-							config.parameters.simpleItem = items.Append(sitem).ToArray();
+							config.parameters.simpleItem = utils.EnumerableExtensions.Append(items, sitem).ToArray();
 						} else {
 							if (config.parameters == null) {
 								config.parameters = new global::onvif.services.ItemList();

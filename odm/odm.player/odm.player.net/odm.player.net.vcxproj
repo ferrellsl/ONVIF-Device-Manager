@@ -22,7 +22,7 @@
     <ProjectGuid>{D3EEB24E-79A7-48B3-8D58-EDBABB68CF0A}</ProjectGuid>
     <Keyword>Win32Proj</Keyword>
     <RootNamespace>odm.player</RootNamespace>
-    <VCTargetsPath Condition="'$(VCTargetsPath11)' != '' and '$(VSVersion)' == '' and $(VisualStudioVersion) == ''">$(VCTargetsPath11)</VCTargetsPath>
+    <TargetFrameworkVersion>v4.8</TargetFrameworkVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup>
@@ -30,7 +30,8 @@
     <CharacterSet>Unicode</CharacterSet>
     <CLRSupport>true</CLRSupport>
     <UseOfMfc>false</UseOfMfc>
-    <PlatformToolset>v100</PlatformToolset>
+    <PlatformToolset>v142</PlatformToolset>
+    <TargetName>odm.player.net</TargetName>
   </PropertyGroup>
   <PropertyGroup Label="Configuration" Condition="'$(Configuration)'=='Debug'">
     <WholeProgramOptimization>false</WholeProgramOptimization>
@@ -49,20 +50,18 @@
   <PropertyGroup>
     <OutDir>bin\$(Platform)\$(Configuration)\</OutDir>
     <IntDir>obj\$(Platform)\$(Configuration)\</IntDir>
-    <Live555Dir>$(SolutionDir)libs/live555-2013.02.11/</Live555Dir>
-    <FFMpegDir>$(SolutionDir)libs/ffmpeg-git-a5c1a0c/</FFMpegDir>
+    <FFMpegDir>$(SolutionDir)libs/ffmpeg/</FFMpegDir>
     <LinkIncremental Condition="'$(Configuration)'=='Debug'">true</LinkIncremental>
     <LinkIncremental Condition="'$(Configuration)'=='Release'">false</LinkIncremental>
   </PropertyGroup>
   <ItemDefinitionGroup>
     <ClCompile>
       <AdditionalIncludeDirectories>include;../odm.player.lib/include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <AdditionalIncludeDirectories>$(Live555Dir)liveMedia/include;$(Live555Dir)UsageEnvironment/include;$(Live555Dir)groupsock/include;$(Live555Dir)BasicUsageEnvironment/include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <AdditionalIncludeDirectories>$(FFMpegDir)include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <PrecompiledHeaderFile />
       <PrecompiledHeaderOutputFile />
-      <PreprocessorDefinitions>_WINDOWS;_USRDLL;LIBONVIFMP_EXPORTS;RTSPCLIENT_SYNCHRONOUS_INTERFACE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_WINDOWS;_USRDLL;LIBONVIFMP_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <PreprocessorDefinitions Condition="'$(Configuration)'=='Debug'">_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <PreprocessorDefinitions Condition="'$(Configuration)'=='Release'">NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <PreprocessorDefinitions Condition="'$(Platform)'=='Win32'">WIN32;%(PreprocessorDefinitions)</PreprocessorDefinitions>
@@ -87,12 +86,8 @@
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
-      <AdditionalLibraryDirectories>$(FFMpegDir)$(Platform)\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <IgnoreAllDefaultLibraries>true</IgnoreAllDefaultLibraries>
-      <AdditionalDependencies>mscoree.lib;msvcmrt.lib;ws2_32.lib;Rpcrt4.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalDependencies>avcodec.lib;avdevice.lib;avfilter.lib;avformat.lib;avutil.lib;swscale.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalDependencies Condition="'$(Configuration)'=='Debug'">msvcrtd.lib;msvcprtd.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalDependencies Condition="'$(Configuration)'=='Release'">msvcrt.lib;msvcprt.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(FFMpegDir)bin;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>avcodec.lib;avformat.lib;avutil.lib;swscale.lib;ws2_32.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <TargetMachine Condition="'$(Platform)'=='Win32'">MachineX86</TargetMachine>
       <TargetMachine Condition="'$(Platform)'=='x64'">MachineX64</TargetMachine>
       <GenerateDebugInformation Condition="'$(Configuration)'=='Release'">false</GenerateDebugInformation>
@@ -105,9 +100,6 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ProjectReference Include="$(SolutionDir)libs\live555-2013.02.11\live555.vcxproj">
-      <Project>{9819b4d5-2f85-4349-8159-e3a64cf97dc1}</Project>
-    </ProjectReference>
     <ProjectReference Include="$(SolutionDir)utils\utils.common\utils.common.csproj">
       <Project>{2faa440a-87d3-41ab-9931-25ac306a25ba}</Project>
     </ProjectReference>

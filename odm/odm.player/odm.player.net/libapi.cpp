@@ -1,9 +1,4 @@
-#include "odm.player.lib/core.h"
-#include "odm.player.lib/Live555.hpp"
-
-//#include "liveMedia.hh"
-//#include "BasicUsageEnvironment.hh"
-//#include "MediaSink.hh"
+#include "odm.player.lib/all.h"
 
 #include <Windows.h>
 #include<vcclr.h>
@@ -14,8 +9,6 @@
 #include <memory>
 #include <functional>
 #include <algorithm>
-
-#include "odm.player.lib/Live555.hpp"
 
 namespace odm{
 	namespace player{
@@ -105,9 +98,9 @@ namespace odm{
 			void Init(VideoBuffer^ videoBuffer, IMetadataReceiver^ metadataReceiver){
 				log::WriteInfo("Live555::Init(...)");
 				playbackController = nullptr;
-				onvifmpInstance = new onvifmp::Live555();
+				onvifmpInstance = new onvifmp::Player();
 				if(onvifmpInstance == nullptr){
-					throw gcnew Exception("failed to create Live555 native instance");
+					throw gcnew Exception("failed to create native player instance");
 				}
 				
 				this->metadataReceiver = metadataReceiver;
@@ -124,13 +117,13 @@ namespace odm{
 					auto onvifmpVideoBuffer = std::make_shared<onvifmp::VideoBuffer>();
 					
 					if(videoBuffer->pixelFormat == PixFrmt::rgb24){
-						onvifmpVideoBuffer->pixelFormat = PixelFormat::PIX_FMT_RGB24;
+						onvifmpVideoBuffer->pixelFormat = AV_PIX_FMT_RGB24;
 					}else if(videoBuffer->pixelFormat == PixFrmt::argb32){
-						onvifmpVideoBuffer->pixelFormat = PixelFormat::PIX_FMT_ARGB;
+						onvifmpVideoBuffer->pixelFormat = AV_PIX_FMT_ARGB;
 					}else if(videoBuffer->pixelFormat == PixFrmt::bgra32){
-						onvifmpVideoBuffer->pixelFormat = PixelFormat::PIX_FMT_BGRA;
+						onvifmpVideoBuffer->pixelFormat = AV_PIX_FMT_BGRA;
 					}else if(videoBuffer->pixelFormat == PixFrmt::bgr24){
-						onvifmpVideoBuffer->pixelFormat = PixelFormat::PIX_FMT_BGR24;
+						onvifmpVideoBuffer->pixelFormat = AV_PIX_FMT_BGR24;
 					}else{
 						throw gcnew Exception("invalid pixel format");
 					}
@@ -219,24 +212,23 @@ namespace odm{
 				try{
 					urlIntPtr = Marshal::StringToHGlobalAnsi(mediaStreamInfo->url);
 					auto url = static_cast<char*>(urlIntPtr.ToPointer());
-					Authenticator* authenticator = nullptr;
+					char* userName = nullptr;
+					char* password = nullptr;
 					if(mediaStreamInfo->userNameToken != nullptr){
 						auto userNameToken = mediaStreamInfo->userNameToken;
 						
 						auto userNameBytes = Encoding::UTF8->GetBytes(userNameToken->userName);
 						userNameIntPtr = Marshal::AllocHGlobal(userNameBytes->Length+1);
 						Marshal::Copy(userNameBytes, 0, userNameIntPtr, userNameBytes->Length);
-						auto userName = static_cast<char*>(userNameIntPtr.ToPointer());
+						userName = static_cast<char*>(userNameIntPtr.ToPointer());
 						userName[userNameBytes->Length] = 0;
 						
 						
 						auto passwordBytes = Encoding::UTF8->GetBytes(userNameToken->password);
 						passwordIntPtr = Marshal::AllocHGlobal(passwordBytes->Length+1);
 						Marshal::Copy(passwordBytes, 0, passwordIntPtr, passwordBytes->Length);
-						auto password = static_cast<char*>(passwordIntPtr.ToPointer());
+						password = static_cast<char*>(passwordIntPtr.ToPointer());
 						password[passwordBytes->Length] = 0;
-
-						authenticator = new Authenticator(userName, password);
 					}
 					//auto proxyController = std::make_shared<ProxyPlaybackController>();
 					this->playbackController = playbackController;
@@ -257,13 +249,21 @@ namespace odm{
 
 					
 					msi->url = url;
-					msi->authenticator = authenticator;
+					msi->userName = userName;
+					msi->password = password;
 
 					onvifmpInstance->Run(msi.get(), proxyController);
+					delete proxyController;
 					Cleanup();
 				}finally{
 					if(urlIntPtr != IntPtr::Zero){
 						Marshal::FreeHGlobal(urlIntPtr);
+					}
+					if(userNameIntPtr != IntPtr::Zero){
+						Marshal::FreeHGlobal(userNameIntPtr);
+					}
+					if(passwordIntPtr != IntPtr::Zero){
+						Marshal::FreeHGlobal(passwordIntPtr);
 					}
 				}
 			}
@@ -281,7 +281,7 @@ namespace odm{
 			//Object^ sync;
 			//OnvifInstance *m_nativePlayer;
 			//String^ streamUrl;
-			onvifmp::Live555* onvifmpInstance;
+			onvifmp::Player* onvifmpInstance;
 			VideoBuffer^ videoBuffer;
 			//onvifmp::VideoBuffer* onvifmpVideoBuffer;
 			IMetadataReceiver^ metadataReceiver;

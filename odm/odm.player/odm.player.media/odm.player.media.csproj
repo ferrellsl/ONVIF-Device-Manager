@@ -14,11 +14,11 @@
     <PlatformTarget>AnyCPU</PlatformTarget>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Platform)' == 'Net40' ">
-    <TargetFrameworkVersion>v4.0</TargetFrameworkVersion>
+    <TargetFrameworkVersion>v4.8</TargetFrameworkVersion>
     <DefineConstants>NET40</DefineConstants>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Platform)' == 'Net45' ">
-    <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
+    <TargetFrameworkVersion>v4.8</TargetFrameworkVersion>
     <DefineConstants>NET45</DefineConstants>
   </PropertyGroup>
   <PropertyGroup>

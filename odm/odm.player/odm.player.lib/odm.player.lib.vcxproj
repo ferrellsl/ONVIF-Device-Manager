@@ -21,12 +21,11 @@
   <PropertyGroup Label="Globals">
     <ProjectGuid>{28075439-FFFD-4E7A-AE50-A7C315566F87}</ProjectGuid>
     <RootNamespace>onvifmp</RootNamespace>
-    <VCTargetsPath Condition="'$(VCTargetsPath11)' != '' and '$(VSVersion)' == '' and $(VisualStudioVersion) == ''">$(VCTargetsPath11)</VCTargetsPath>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Label="Configuration">
     <ConfigurationType>StaticLibrary</ConfigurationType>
-    <PlatformToolset>v100</PlatformToolset>
+    <PlatformToolset>v142</PlatformToolset>
     <CLRSupport>false</CLRSupport>
     <UseOfMfc>false</UseOfMfc>
     <CharacterSet>Unicode</CharacterSet>
@@ -49,18 +48,17 @@
     <OutDir>bin\$(Platform)\$(Configuration)\</OutDir>
     <IntDir>obj\$(Platform)\$(Configuration)\</IntDir>
     <TargetName>odm-player</TargetName>
-    <Live555Dir>$(SolutionDir)libs/live555-2013.02.11/</Live555Dir>
-    <FFMpegDir>$(SolutionDir)libs/ffmpeg-git-a5c1a0c/</FFMpegDir>
+    <FFMpegDir>$(SolutionDir)libs/ffmpeg/</FFMpegDir>
     <LinkIncremental Condition="'$(Configuration)'=='Debug'">true</LinkIncremental>
-    <LinkIncremental Condition="'$(Configuration)'=='Release'">False</LinkIncremental>
+    <LinkIncremental Condition="'$(Configuration)'=='Release'">false</LinkIncremental>
   </PropertyGroup>
   <ItemDefinitionGroup>
     <ClCompile>
-      <AdditionalIncludeDirectories>include;$(Live555Dir)liveMedia/include;$(Live555Dir)UsageEnvironment/include;$(Live555Dir)groupsock/include;$(Live555Dir)BasicUsageEnvironment/include;$(FFMpegDir)include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>include;$(FFMpegDir)include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <PrecompiledHeaderFile />
       <PrecompiledHeaderOutputFile />
-      <PreprocessorDefinitions>_LIB;RTSPCLIENT_SYNCHRONOUS_INTERFACE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <PreprocessorDefinitions Condition="'$(Configuration)'=='Debug'">_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <PreprocessorDefinitions Condition="'$(Configuration)'=='Release'">NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <PreprocessorDefinitions Condition="'$(Platform)'=='Win32'">WIN32;%(PreprocessorDefinitions)</PreprocessorDefinitions>
@@ -96,20 +94,11 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="include\odm.player.lib\all.h" />
-    <ClInclude Include=".\include\odm.player.lib\core.h" />
-    <ClInclude Include=".\include\odm.player.lib\Live555.hpp" />
-    <ClInclude Include="include\odm.player.lib\VideoRenderer.hpp" />
-    <ClInclude Include="include\odm.player.lib\MetadataCollector.hpp" />
-    <ClInclude Include="include\odm.player.lib\AudioRenderer.hpp" />
-    <ClInclude Include="include\odm.player.lib\VideoRecorder.hpp" />
-    <ClInclude Include="include\odm.player.lib\H264VirtualSink.hpp" />
-    <ClInclude Include="include\odm.player.lib\AudioDecoder.hpp" />
-    <ClInclude Include="include\odm.player.lib\VideoDecoder.hpp" />
-    <ClInclude Include="include\odm.player.lib\VirtualSink.hpp" />
+    <ClInclude Include="include\odm.player.lib\core.h" />
+    <ClInclude Include="include\odm.player.lib\Player.hpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="Live555.cpp" />
-    <ClCompile Include=".\MetadataCollector.cpp" />
+    <ClCompile Include="Player.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

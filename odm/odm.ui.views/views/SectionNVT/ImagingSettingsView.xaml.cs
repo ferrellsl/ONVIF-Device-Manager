@@ -507,7 +507,7 @@ namespace odm.ui.activities {
 					if (options == null) {
 						options = new TVal[] { currentValue };
 					} else if (!options.Contains(currentValue)) {
-						options = options.Append(currentValue).ToArray();
+						options = utils.EnumerableExtensions.Append(options, currentValue).ToArray();
 					}
 					valueControl.ItemsSource = options;
 					valueControl.SelectedValue = currentValue;

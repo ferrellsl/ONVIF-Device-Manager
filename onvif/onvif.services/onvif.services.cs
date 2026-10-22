@@ -542,7 +542,7 @@ namespace onvif.services {
 			}
 			int d;
 			v = Math.DivRem(v, 10, out d);
-			return GetDigitsFromInt(v).Append(d);
+			return utils.EnumerableExtensions.Append(GetDigitsFromInt(v), d);
 		}
 		public IEnumerable<int> GetDigits() {
 			yield return _major;

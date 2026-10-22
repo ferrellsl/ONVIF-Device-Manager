@@ -23,7 +23,7 @@
         static member Show(container:IUnityContainer, message:string) = async{
             let disp = Application.Current.Dispatcher
             //do! Async.Sleep(200)
-            return! disp.InvokeAsync(fun ()->
+            return! disp.AsyncInvoke(fun ()->
                 //if (!disp.IsDisposed) {
                 let view = new ProgressView(message)
                 //disp.Add(presenter.ShowView(view));
@@ -38,7 +38,7 @@
 //        static member Show(ctx:IUnityContainer, message:string) = async{
 //            let disp = Application.Current.Dispatcher
 //            //do! Async.Sleep(200)
-//            return! disp.InvokeAsync(fun ()->
+//            return! disp.AsyncInvoke(fun ()->
 //                //if (!disp.IsDisposed) {
 //                let presenter = ctx.Resolve<IViewPresenter>()
 //                let view = new ProgressView(message)
