@@ -15,7 +15,7 @@
   </PropertyGroup>
   <PropertyGroup Condition="'$(Platform)' == 'Net40' ">
     <TargetFrameworkVersion>v4.8</TargetFrameworkVersion>
-    <DefineConstants>NET40; $(DefineConstants)</DefineConstants>
+    <DefineConstants>NET45; $(DefineConstants)</DefineConstants>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Platform)' == 'Net45' ">
     <TargetFrameworkVersion>v4.8</TargetFrameworkVersion>
