@@ -31,7 +31,7 @@ This is that ODM, brought up to date:
 
 ## Installing
 
-Download `ODM-2.3.0-setup.exe` from the [Releases](../../releases) page and run
+Download `ODM-2.3.1-setup.exe` from the [Releases](../../releases) page and run
 it. It needs 64-bit Windows 10 or 11 with .NET Framework 4.8 (part of Windows
 10 since the May 2019 update, and of Windows 11). Everything else, including
 FFmpeg and the Visual C++ runtime, comes with it.

@@ -2,7 +2,7 @@
 ; Build the solution first (Release|x64).
 
 #define AppName "ONVIF Device Manager"
-#define AppVersion "2.3.0"
+#define AppVersion "2.3.1"
 #define Bin "..\odm\odm.ui.app\bin\Release\x64"
 #define Crt "C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\VC\Redist\MSVC\14.29.30133\x64\Microsoft.VC142.CRT"
 
