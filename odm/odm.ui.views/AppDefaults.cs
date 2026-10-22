@@ -32,7 +32,9 @@ namespace odm.ui {
 		}
 		static public string AppDataPath {
 			get {
-				string path = SystemFolderPath;// +AppDataFolder + @"\";
+				//the user's own folder (%LOCALAPPDATA%\Onvif Device Manager): settings, cameras added
+				//by hand and saved logins can't live next to the program when it's in Program Files
+				string path = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), AppDataFolder) + @"\";
 				if (!Directory.Exists(path))
 					Directory.CreateDirectory(path);
 				return path;
