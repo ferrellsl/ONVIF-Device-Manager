@@ -37,12 +37,14 @@ namespace onvifmp{
 		int videoStream;
 		int metadataStream;
 		int metadataSeqNum;
+		int shownWidth, shownHeight;		//(the size last described in the video buffer's info)
 
 		static string UrlWithCredentials(const MediaStreamInfo* mediaStreamInfo);
 		bool Open(MediaStreamInfo* mediaStreamInfo, AVIOInterruptCB interrupt);
 		bool OpenDecoder();
 		void Decode(const AVPacket* packet);
 		void Render(const AVFrame* frame);
+		void Describe(const AVFrame* frame);
 		void Cleanup();
 	};
 }

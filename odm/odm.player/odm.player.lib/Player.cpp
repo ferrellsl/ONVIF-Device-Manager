@@ -1,6 +1,8 @@
 #include "odm.player.lib/all.h"
 
 #include <thread>
+#include <cstdio>
+#include <cstring>
 
 namespace onvifmp{
 	using namespace std;
@@ -14,6 +16,7 @@ namespace onvifmp{
 		videoStream = -1;
 		metadataStream = -1;
 		metadataSeqNum = 0;
+		shownWidth = shownHeight = 0;
 	}
 
 	Player::~Player(){
@@ -186,6 +189,9 @@ namespace onvifmp{
 	///<summary>the frame, scaled to the video buffer and converted to its pixel format</summary>
 	void Player::Render(const AVFrame* frame){
 		auto vb = videoBuffer.get();
+		if(frame->width != shownWidth || frame->height != shownHeight){
+			Describe(frame);
+		}
 		scaleContext = sws_getCachedContext(scaleContext, frame->width, frame->height, (AVPixelFormat)frame->format,
 			vb->width, vb->height, vb->pixelFormat, SWS_FAST_BILINEAR, nullptr, nullptr, nullptr);
 		if(scaleContext == nullptr){
@@ -193,6 +199,29 @@ namespace onvifmp{
 		}
 		*vb->signal = 1;
 		sws_scale(scaleContext, frame->data, frame->linesize, 0, frame->height, vb->scan0, vb->stride);
+	}
+
+	///<summary>tells the UI what is playing: the codec and the picture's own size</summary>
+	void Player::Describe(const AVFrame* frame){
+		auto vb = videoBuffer.get();
+		shownWidth = frame->width;
+		shownHeight = frame->height;
+		if(vb->info == nullptr || vb->infoSize <= 0){
+			return;
+		}
+		const char* codec;
+		switch(codecContext->codec_id){
+			case AV_CODEC_ID_HEVC: codec = "H.265"; break;
+			case AV_CODEC_ID_H264: codec = "H.264"; break;
+			case AV_CODEC_ID_MJPEG: codec = "MJPEG"; break;
+			case AV_CODEC_ID_MPEG4: codec = "MPEG-4"; break;
+			default: codec = codecContext->codec->name; break;
+		}
+		char text[64];
+		snprintf(text, sizeof(text), "%s  %dx%d", codec, frame->width, frame->height);
+		auto length = min((int)strlen(text), vb->infoSize - 1);
+		vb->info[length] = 0;					//(cut short first: the UI may be reading it)
+		memcpy(vb->info, text, length);
 	}
 
 	void Player::Cleanup(){
@@ -209,5 +238,6 @@ namespace onvifmp{
 		videoStream = -1;
 		metadataStream = -1;
 		metadataSeqNum = 0;
+		shownWidth = shownHeight = 0;
 	}
 }
