@@ -52,7 +52,8 @@ Name: "{autodesktop}\{#AppName}"; Filename: "{app}\odm.exe"; WorkingDir: "{app}"
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"
 
 [Run]
-Filename: "{app}\odm.exe"; WorkingDir: "{app}"; Description: "{cm:LaunchProgram,{#AppName}}"; Flags: nowait postinstall skipifsilent
+; (ODM needs administrator rights, so it starts with the installer's - as a normal user it can't: error 740)
+Filename: "{app}\odm.exe"; WorkingDir: "{app}"; Description: "{cm:LaunchProgram,{#AppName}}"; Flags: nowait postinstall skipifsilent runascurrentuser
 
 [UninstallDelete]
 Type: filesandordirs; Name: "{app}\logs"

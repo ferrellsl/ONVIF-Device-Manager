@@ -39,6 +39,9 @@ FFmpeg and the Visual C++ runtime, comes with it.
 The installer isn't code-signed, so Windows SmartScreen may warn about it the
 first time: choose **More info**, then **Run anyway**.
 
+ODM runs as administrator (as the original did: discovery needs it), so Windows
+asks for permission each time it starts.
+
 If a camera doesn't show up, add it by hand with **Add** at the bottom of the
 device list: its address, e.g. `http://192.168.1.20:8080/onvif/device_service`.
 
