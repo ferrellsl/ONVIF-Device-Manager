@@ -22,7 +22,8 @@ namespace onvifmp{
 		///<param name="metadataListener">callback to receive metadata</param>
 		void SetMetadataOutput(MetadataListener metadataListener);
 
-		///<summary>plays the stream until the session is disposed or the stream ends</summary>
+		///<summary>plays the stream until the session is disposed: when it stalls or ends, it is opened
+		///again (after a growing delay), unless the camera refuses the credentials</summary>
 		void Run(MediaStreamInfo* mediaStreamInfo, IPlaybackController* playbackController);
 
 	protected:
@@ -38,6 +39,7 @@ namespace onvifmp{
 		int metadataStream;
 		int metadataSeqNum;
 		int shownWidth, shownHeight;		//(the size last described in the video buffer's info)
+		int openError;						//(why Open last failed: an AVERROR)
 
 		static string UrlWithCredentials(const MediaStreamInfo* mediaStreamInfo);
 		bool Open(MediaStreamInfo* mediaStreamInfo, AVIOInterruptCB interrupt);

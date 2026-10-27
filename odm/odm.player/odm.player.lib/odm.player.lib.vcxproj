@@ -96,6 +96,8 @@
     <ClInclude Include="include\odm.player.lib\all.h" />
     <ClInclude Include="include\odm.player.lib\core.h" />
     <ClInclude Include="include\odm.player.lib\Player.hpp" />
+    <ClInclude Include="include\odm.player.lib\PlaybackPolicy.hpp" />
+    <ClInclude Include="include\odm.player.lib\PlayerLog.hpp" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Player.cpp" />

@@ -71,6 +71,7 @@ namespace odm.ui.activities {
 			InitializeComponent();
 
 			Unloaded += (s, e) => WatchOwnerKeys(null);
+			disposables.Add(Disposable.Create(() => WatchOwnerKeys(null)));	//(disposed while still loaded)
 			disposables.Add(Disposable.Create(CloseFullScreen));
 
 			captionNoSignal.CreateBinding(TextBlock.TextProperty, Strings, s => s.noSignal);
@@ -379,13 +380,29 @@ namespace odm.ui.activities {
 			var owner = Window.GetWindow(this);
 			var grid = new Grid();
 			grid.Children.Add(new Image { Source = _imgVIew.Source, Stretch = Stretch.Uniform });
+			//(the player's NO SIGNAL warning, shown here too when the stream stops)
+			var noSignal = new TextBlock { Foreground = Brushes.White, FontSize = 36, FontWeight = FontWeights.Bold };
+			noSignal.SetBinding(TextBlock.TextProperty, new System.Windows.Data.Binding("Text") { Source = captionNoSignal });
+			var noSignalBox = new Border {
+				Child = noSignal, Padding = new Thickness(24, 4, 24, 4), CornerRadius = new CornerRadius(4),
+				Background = new SolidColorBrush(System.Windows.Media.Color.FromArgb(0x7F, 0xFF, 0, 0)),
+				BorderBrush = new SolidColorBrush(System.Windows.Media.Color.FromArgb(0x7F, 0xFF, 0, 0)), BorderThickness = new Thickness(4),
+				HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center
+			};
+			noSignalBox.SetBinding(UIElement.VisibilityProperty, new System.Windows.Data.Binding("Visibility") { Source = noSignalPanel });
+			grid.Children.Add(noSignalBox);
+			//(the stream's codec and size)
 			var info = new TextBlock { Foreground = Brushes.White, FontWeight = FontWeights.SemiBold, FontSize = 16 };
 			info.SetBinding(TextBlock.TextProperty, new System.Windows.Data.Binding("Text") { Source = streamInfo });
-			grid.Children.Add(new Border {
+			var infoBox = new Border {
 				Child = info, Background = new SolidColorBrush(System.Windows.Media.Color.FromArgb(0x7F, 0, 0, 0)), CornerRadius = new CornerRadius(3),
 				Padding = new Thickness(8, 3, 8, 3), Margin = new Thickness(12),
 				HorizontalAlignment = HorizontalAlignment.Right, VerticalAlignment = VerticalAlignment.Top
+			};
+			infoBox.SetBinding(UIElement.VisibilityProperty, new System.Windows.Data.Binding("Text") {
+				Source = streamInfo, Converter = new EmptyTextHidden()
 			});
+			grid.Children.Add(infoBox);
 			fullScreen = new Window {
 				Content = grid, Background = Brushes.Black,
 				WindowStyle = WindowStyle.None, ResizeMode = ResizeMode.NoResize, ShowInTaskbar = false,
@@ -417,14 +434,25 @@ namespace odm.ui.activities {
 			fullScreen.Activate();
 		}
 
-		//(double-clicks on the pause/play button are the button's)
-		static bool InButton(DependencyObject element) {
+		//(double-clicks on the pause/play button, an editor's shapes, text boxes and the like are theirs)
+		static bool Interactive(DependencyObject element) {
 			for (; element != null; element = element is Visual ? VisualTreeHelper.GetParent(element) : LogicalTreeHelper.GetParent(element)) {
-				if (element is System.Windows.Controls.Primitives.ButtonBase) {
+				if (element is System.Windows.Controls.Primitives.ButtonBase || element is System.Windows.Shapes.Shape ||
+					element is System.Windows.Controls.Primitives.TextBoxBase || element is System.Windows.Controls.Primitives.Thumb) {
 					return true;
 				}
 			}
 			return false;
+		}
+
+		//(the full-screen copy of the stream-info label: hidden while it has no text)
+		class EmptyTextHidden : System.Windows.Data.IValueConverter {
+			public object Convert(object value, Type targetType, object parameter, System.Globalization.CultureInfo culture) {
+				return String.IsNullOrEmpty(value as string) ? Visibility.Collapsed : Visibility.Visible;
+			}
+			public object ConvertBack(object value, Type targetType, object parameter, System.Globalization.CultureInfo culture) {
+				throw new NotSupportedException();
+			}
 		}
 
 		void CloseFullScreen() {
@@ -436,22 +464,31 @@ namespace odm.ui.activities {
 		}
 
 		//F11 in ODM's window (while this video is showing), or a double-click on the video,
-		//goes full screen. (Taken at the window: what's drawn over the video, e.g. analytics,
-		//would otherwise get the clicks.)
+		//goes full screen. Taken at the window, after everything under the mouse has had the
+		//double-click (bubbling, handled ones too: what's drawn over the video, e.g. analytics,
+		//gets the clicks, and containers such as a ScrollViewer mark every click handled), and
+		//never taken from them - but not acted on when it is on something interactive drawn over
+		//the video (a region editor's lines, points and filled region, buttons, text boxes), whose
+		//gesture it is; F11 works there too.
+		System.Windows.Input.MouseButtonEventHandler ownerMouseDown;
+
 		void WatchOwnerKeys(Window owner) {
+			if (ownerMouseDown == null) {
+				ownerMouseDown = OwnerMouseDown;
+			}
 			if (ownerWindow != null) {
 				ownerWindow.PreviewKeyDown -= OwnerPreviewKeyDown;
-				ownerWindow.PreviewMouseLeftButtonDown -= OwnerPreviewMouseDown;
+				ownerWindow.RemoveHandler(UIElement.MouseLeftButtonDownEvent, ownerMouseDown);
 			}
 			ownerWindow = owner;
 			if (ownerWindow != null) {
 				ownerWindow.PreviewKeyDown += OwnerPreviewKeyDown;
-				ownerWindow.PreviewMouseLeftButtonDown += OwnerPreviewMouseDown;
+				ownerWindow.AddHandler(UIElement.MouseLeftButtonDownEvent, ownerMouseDown, true);
 			}
 		}
 
-		void OwnerPreviewMouseDown(object sender, System.Windows.Input.MouseButtonEventArgs e) {
-			if (e.ClickCount != 2 || !IsVisible || InButton(e.OriginalSource as DependencyObject)) {
+		void OwnerMouseDown(object sender, System.Windows.Input.MouseButtonEventArgs e) {
+			if (e.ClickCount != 2 || !IsVisible || Interactive(e.OriginalSource as DependencyObject)) {
 				return;
 			}
 			var at = e.GetPosition(_imgVIew);

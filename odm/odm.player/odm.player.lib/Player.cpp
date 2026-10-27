@@ -1,4 +1,6 @@
 #include "odm.player.lib/all.h"
+#include "odm.player.lib/PlaybackPolicy.hpp"
+#include "odm.player.lib/PlayerLog.hpp"
 
 #include <thread>
 #include <cstdio>
@@ -17,6 +19,32 @@ namespace onvifmp{
 		metadataStream = -1;
 		metadataSeqNum = 0;
 		shownWidth = shownHeight = 0;
+		openError = 0;
+	}
+
+	///<summary>The RTSP status behind an FFmpeg error from opening a stream (FFmpeg reports a
+	///camera's error reply as the matching HTTP error), or 0 when the camera didn't answer with
+	///one: it couldn't be reached, timed out, or the connection broke.</summary>
+	static int RtspStatusOf(int error){
+		switch(error){
+			case AVERROR_HTTP_BAD_REQUEST: return 400;
+			case AVERROR_HTTP_UNAUTHORIZED: return 401;
+			case AVERROR_HTTP_FORBIDDEN: return 403;
+			case AVERROR_HTTP_NOT_FOUND: return 404;
+			case AVERROR_HTTP_OTHER_4XX: return 499;
+			case AVERROR_HTTP_SERVER_ERROR: return 500;
+			default: return 0;
+		}
+	}
+
+	///<summary>An FFmpeg error as text, for the log</summary>
+	static string ErrorText(int error){
+		char text[AV_ERROR_MAX_STRING_SIZE] = {};
+		if(error == AVERROR_EXIT){
+			return "no answer in time";
+		}
+		av_strerror(error, text, sizeof(text));
+		return text;
 	}
 
 	Player::~Player(){
@@ -70,8 +98,10 @@ namespace onvifmp{
 	}
 
 	bool Player::Open(MediaStreamInfo* mediaStreamInfo, AVIOInterruptCB interrupt){
+		openError = AVERROR(ENOMEM);
+		packet = av_packet_alloc();
 		formatContext = avformat_alloc_context();
-		if(formatContext == nullptr){
+		if(packet == nullptr || formatContext == nullptr){
 			return false;
 		}
 		formatContext->interrupt_callback = interrupt;
@@ -89,8 +119,10 @@ namespace onvifmp{
 		av_dict_free(&options);
 		if(result < 0){
 			formatContext = nullptr;					//(freed by avformat_open_input)
+			openError = result;
 			return false;
 		}
+		openError = AVERROR_STREAM_NOT_FOUND;
 
 		//the streams wanted: the first video stream that can be decoded, and the metadata stream
 		for(unsigned i = 0; i < formatContext->nb_streams; ++i){
@@ -108,7 +140,12 @@ namespace onvifmp{
 		if(videoStream < 0 && metadataStream < 0){
 			return false;
 		}
-		return videoStream < 0 || OpenDecoder();
+		openError = AVERROR_DECODER_NOT_FOUND;
+		if(videoStream >= 0 && !OpenDecoder()){
+			return false;
+		}
+		openError = 0;
+		return true;
 	}
 
 	bool Player::OpenDecoder(){
@@ -140,38 +177,164 @@ namespace onvifmp{
 			}
 		}playbackSession;
 
-		//(blocking network calls give up as soon as the session is disposed)
-		AVIOInterruptCB interrupt = { [](void* session)->int{
-			return static_cast<PlaybackSession*>(session)->disposed ? 1 : 0;
-		}, &playbackSession };
+		// What the network calls watch (FFmpeg asks several times a second whether to give up):
+		// the view being closed, a deadline for opening the stream, and - while it plays - the
+		// video stalling (the decisions are in PlaybackPolicy.hpp).
+		struct Watch{
+			PlaybackSession* session;
+			ULONGLONG openDeadline;		//(0: not opening)
+			bool reading;
+			bool hasVideo;				//(this session has a video stream)
+			bool videoInSession;		//(video has arrived in this session)
+			bool videoArrived;			//(video has arrived at least once in this player, over all sessions)
+			ULONGLONG lastVideo;		//(when video last arrived, or the session opened)
+			bool stalled;
+		}watch = {};
+		watch.session = &playbackSession;
+		AVIOInterruptCB interrupt = { [](void* data)->int{
+			auto w = static_cast<Watch*>(data);
+			if(w->session->disposed){
+				return 1;
+			}
+			auto now = GetTickCount64();
+			if(w->openDeadline != 0 && now > w->openDeadline){
+				return 1;
+			}
+			if(w->reading && policy::Stalled(w->hasVideo, w->videoInSession, (int)((now - w->lastVideo) / 1000), w->videoArrived)){
+				w->stalled = true;
+				return 1;
+			}
+			return 0;
+		}, &watch };
+		const ULONGLONG openTime = 20000;		//(at most 20 s to open the stream)
 
-		packet = av_packet_alloc();
-		if(packet == nullptr || !Open(mediaStreamInfo, interrupt)){
+		char camera[64];
+		playerlog::CameraOf(mediaStreamInfo->url, camera, sizeof(camera));
+		watch.openDeadline = GetTickCount64() + openTime;
+		auto opened = Open(mediaStreamInfo, interrupt);
+		watch.openDeadline = 0;
+		if(!opened){
+			playerlog::Write(camera, "could not open the stream: %s", ErrorText(openError).c_str());
 			Cleanup();
 			return;
 		}
+		playerlog::Write(camera, "stream opened");
 		if(!playbackController->Initialized(&playbackSession)){
 			Cleanup();
 			return;
 		}
 
-		while(!playbackSession.disposed){
-			auto result = av_read_frame(formatContext, packet);
-			if(result == AVERROR(EAGAIN)){
-				continue;
+		// When the stream stalls (no video for 10 s: the camera went away, or dropped the session)
+		// or ends while the view is still open, it is opened again, after a growing delay - but not
+		// once the camera has refused the credentials. ODM doesn't restart a player that has reported
+		// its end, so it isn't told: the picture just carries on once the stream is back.
+		int attempt = 0;				//(reopenings since video last arrived)
+		// (for the log: the outage under way, from the last video packet to the next)
+		ULONGLONG outageSince = 0;		//(0: none)
+		int unanswered = 0;				//(reopen attempts the camera didn't answer at all)
+		for(;;){
+			watch.reading = true;
+			watch.hasVideo = videoStream >= 0;
+			watch.videoInSession = false;
+			watch.lastVideo = GetTickCount64();
+			watch.stalled = false;
+			unsigned videoPackets = 0;
+			int result = 0;
+			while(!playbackSession.disposed){
+				result = av_read_frame(formatContext, packet);
+				if(result == AVERROR(EAGAIN)){
+					continue;
+				}
+				if(result < 0){
+					break;									//(the stream ended, stalled, or the camera went away)
+				}
+				if(packet->stream_index == videoStream){
+					if(!watch.videoInSession){
+						if(outageSince != 0){
+							int seconds = (int)((GetTickCount64() - outageSince) / 1000);
+							playerlog::Write(camera, "video back after %d s without video; %d reopen attempt(s), %d of them unanswered%s",
+								seconds, attempt, unanswered,
+								unanswered > 0 ? " (the camera was unreachable: likely restarting)" :
+								attempt <= 1 ? " (the camera answered at once: a network or stream hiccup)" : "");
+							outageSince = 0;
+							unanswered = 0;
+						}else{
+							playerlog::Write(camera, "video arriving");
+						}
+					}
+					watch.videoInSession = true;
+					watch.videoArrived = true;
+					watch.lastVideo = GetTickCount64();
+					attempt = 0;			//(video is back: the next reopening starts the backoff over)
+					++videoPackets;
+					Decode(packet);
+				}else if(packet->stream_index == metadataStream){
+					metadataListener(packet->data, packet->size, true, metadataSeqNum++);
+				}
+				av_packet_unref(packet);
 			}
-			if(result < 0){
-				break;									//(the stream ended, or the camera went away)
+			watch.reading = false;
+			Cleanup();
+			if(playbackSession.disposed){
+				playerlog::Write(camera, "view closed");
+				break;
 			}
-			if(packet->stream_index == videoStream){
-				Decode(packet);
-			}else if(packet->stream_index == metadataStream){
-				metadataListener(packet->data, packet->size, true, metadataSeqNum++);
+			int seconds = (int)((GetTickCount64() - watch.lastVideo) / 1000);
+			if(outageSince == 0){
+				outageSince = watch.videoArrived ? watch.lastVideo : GetTickCount64();
+				if(watch.stalled){
+					playerlog::Write(camera, "video stopped: no packets for %d s (%u in this session)", seconds, videoPackets);
+				}else{
+					playerlog::Write(camera, "the stream ended: %s (%u video packets in this session)", ErrorText(result).c_str(), videoPackets);
+				}
+			}else if(watch.stalled){
+				playerlog::Write(camera, "the reopened session brought no video in %d s", seconds);
+			}else{
+				playerlog::Write(camera, "the reopened session ended: %s", ErrorText(result).c_str());
 			}
-			av_packet_unref(packet);
-		}
-		if(!playbackSession.disposed){
-			playbackController->Shutdown();
+
+			// open it again (the delay keeps growing over reopenings that bring no video; it starts
+			// over once video arrives)
+			bool reopened = false;
+			while(!playbackSession.disposed && !reopened){
+				++attempt;
+				for(int i = 0; i < policy::ReconnectDelay(attempt) * 10 && !playbackSession.disposed; ++i){
+					Sleep(100);
+				}
+				if(playbackSession.disposed){
+					break;
+				}
+				watch.openDeadline = GetTickCount64() + openTime;
+				reopened = Open(mediaStreamInfo, interrupt);
+				watch.openDeadline = 0;
+				if(reopened){
+					playerlog::Write(camera, "reopen attempt %d: session opened", attempt);
+					break;
+				}
+				auto error = openError;
+				Cleanup();
+				if(playbackSession.disposed){
+					break;
+				}
+				auto status = RtspStatusOf(error);
+				if(status == 0){
+					++unanswered;
+				}
+				if(!policy::RetryAfter(status)){
+					playerlog::Write(camera, "reopen attempt %d: the camera refused the credentials (%d): giving up", attempt, status);
+					break;				//(the credentials were refused: don't keep trying them)
+				}
+				playerlog::Write(camera, "reopen attempt %d failed: %s; next in %d s", attempt, ErrorText(error).c_str(), policy::ReconnectDelay(attempt + 1));
+			}
+			if(!reopened){
+				if(!playbackSession.disposed){
+					playerlog::Write(camera, "stopped");
+					playbackController->Shutdown();
+				}else{
+					playerlog::Write(camera, "view closed");
+				}
+				break;
+			}
 		}
 		Cleanup();
 	}

@@ -1,4 +1,4 @@
-# ONVIF Device Manager (ODM) 2.3 - with H.265
+# ONVIF Device Manager (ODM) 2.4 - with H.265
 
 ODM finds the ONVIF cameras on your network and lets you watch and configure
 them: live video, video encoder settings, imaging, network, users, PTZ, events
@@ -18,6 +18,15 @@ This is that ODM, brought up to date:
   video.
 - **Full screen.** Double-click the video, or press F11, to fill the screen with
   it; Esc, F11 or another double-click goes back.
+- **Reconnects by itself.** When a camera stops sending video for 10 seconds
+  (it rebooted, dropped off Wi-Fi, or ended the session), the video shows NO
+  SIGNAL and ODM opens the stream again: after 2 seconds, then 4, 8, 16, 32,
+  and every 60 seconds after that until the camera is back. It stops trying if
+  the camera refuses the login, so as not to lock the account.
+- **A log of dropouts.** Each stream's dropouts and reconnects are written,
+  one line each, to `%LOCALAPPDATA%\Onvif Device Manager\logs\player.log`,
+  so you can tell a camera that keeps restarting (it stops answering) from a
+  network hiccup (it answers at once). No passwords are written to it.
 - **Better discovery.** Some cameras never answer the network-wide discovery
   probe, only one sent straight to them. After the usual probe, ODM now also
   probes every address of your local network directly, so those cameras show
@@ -33,7 +42,7 @@ This is that ODM, brought up to date:
 
 ## Installing
 
-Download `ODM-2.3.2-setup.exe` from the [Releases](../../releases) page and run
+Download `ODM-2.4.0-setup.exe` from the [Releases](../../releases) page and run
 it. It needs 64-bit Windows 10 or 11 with .NET Framework 4.8 (part of Windows
 10 since the May 2019 update, and of Windows 11). Everything else, including
 FFmpeg and the Visual C++ runtime, comes with it.
