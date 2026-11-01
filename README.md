@@ -27,6 +27,9 @@ This is that ODM, brought up to date:
   one line each, to `%LOCALAPPDATA%\Onvif Device Manager\logs\player.log`,
   so you can tell a camera that keeps restarting (it stops answering) from a
   network hiccup (it answers at once). No passwords are written to it.
+- **Ignores bad camera addresses.** An announced address with port 0 can no
+  longer replace a camera's working address. Announcements and address changes
+  are logged to `discovery.log`, beside `player.log`.
 - **Better discovery.** Some cameras never answer the network-wide discovery
   probe, only one sent straight to them. After the usual probe, ODM now also
   probes every address of your local network directly, so those cameras show
@@ -42,7 +45,7 @@ This is that ODM, brought up to date:
 
 ## Installing
 
-Download `ODM-2.4.0-setup.exe` from the [Releases](../../releases) page and run
+Download `ODM-2.4.1-setup.exe` from the [Releases](../../releases) page and run
 it. It needs 64-bit Windows 10 or 11 with .NET Framework 4.8 (part of Windows
 10 since the May 2019 update, and of Windows 11). Everything else, including
 FFmpeg and the Visual C++ runtime, comes with it.

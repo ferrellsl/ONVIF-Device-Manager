@@ -367,13 +367,25 @@
             node.SetRemoved()
         )
 
+        let uri_list (uris:seq<Uri>) = String.Join(" ", uris |> Seq.map (fun uri -> uri.OriginalString))
+
+        let discovery_log (text:string) =
+            try
+                let dir = System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Onvif Device Manager", "logs")
+                System.IO.Directory.CreateDirectory(dir) |> ignore
+                let path = System.IO.Path.Combine(dir, "discovery.log")
+                if System.IO.File.Exists(path) && (new System.IO.FileInfo(path)).Length > 1048576L then
+                    System.IO.File.Delete(path)
+                System.IO.File.AppendAllText(path, sprintf "%s %s\r\n" (DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss")) text)
+            with err ->
+                ()
+
         let notify_online (node:NvtOnlineDescriptor) = tramp.Drop(fun()->
             m_subj.OnNext(node :> INvtNode)
         )
 
-        let process_online (ep_meta:EndpointDiscoveryMetadata, msgSeq:DiscoveryMessageSequence) = 
+        let accept_online (ep_meta:EndpointDiscoveryMetadata, uris:Uri[], msgSeq:DiscoveryMessageSequence) =
             let ep_ref = ep_meta.Address.Uri.OriginalString
-            let uris = ep_meta.ListenUris.ToArray()
             let scopes = ep_meta.Scopes.ToArray()
             let identity = new NvtIdentity(ep_ref, uris, scopes)
             let node  = new NvtOnlineDescriptor(identity, msgSeq)
@@ -396,12 +408,22 @@
                         not(origin_node.identity.uris.SequenceEqual(uris))
 
                     if need_to_refresh then
+                        discovery_log (sprintf "address changed: %s -> %s" (uri_list origin_node.identity.uris) (uri_list uris))
                         notify_offline origin_node
                         online_nodes.[ep_ref] <- node
                         notify_online node
             )
 
-        let process_offline (ep_meta:EndpointDiscoveryMetadata, msgSeq:DiscoveryMessageSequence) = 
+        // Some cameras announce port 0 while they boot; that address must not replace a working one.
+        let process_online (ep_meta:EndpointDiscoveryMetadata, msgSeq:DiscoveryMessageSequence) =
+            let all = ep_meta.ListenUris.ToArray()
+            let uris = all |> Array.filter (fun uri -> uri.Port > 0)
+            if uris.Length < all.Length then
+                discovery_log (sprintf "ignored address with port 0: %s" (uri_list all))
+            if uris.Length > 0 then
+                accept_online(ep_meta, uris, msgSeq)
+
+        let process_offline (ep_meta:EndpointDiscoveryMetadata, msgSeq:DiscoveryMessageSequence) =
             tramp.Drop(fun ()->
                 let ep_ref = ep_meta.Address.Uri.OriginalString
                 let is_online, node = online_nodes.TryGetValue(ep_ref)
@@ -427,6 +449,7 @@
             announcement_srv.OnlineAnnouncementReceived.AddHandler(fun obj args ->
                 let ep_meta = args.EndpointDiscoveryMetadata
                 let msg_seq = args.MessageSequence
+                discovery_log (sprintf "hello: %s" (uri_list (ep_meta.ListenUris.ToArray())))
                 //let nvt_xqn = new XmlQualifiedName("NetworkVideoTransmitter", @"http://www.onvif.org/ver10/network/wsdl")
                 //if ep_meta.ContractTypeNames.Contains(nvt_xqn) then 
                 process_online(ep_meta, msg_seq)
