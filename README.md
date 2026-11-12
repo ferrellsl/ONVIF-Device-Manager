@@ -43,6 +43,30 @@ This is that ODM, brought up to date:
 
 ![ODM playing an H.265 camera; the Video streaming page warns that the camera reports H264](docs/screenshot.jpg)
 
+## Why this fork?
+
+There are now three ODMs: the original 2.2.250 on SourceForge, which can't play
+H.265; the [Apra Labs fork](https://github.com/Apra-Labs/ONVIF-Device-Manager),
+which added H.265 in April 2026; and this one. Here is what this one does
+differently (as of November 2026):
+
+- **One video engine, no live555.** FFmpeg both receives the RTSP stream and
+  decodes it. The 2013 live555 library isn't patched here, it's gone, so there
+  is less old native code in the program and only one network stack for video.
+- **Small.** The installer is 11 MB; Apra's v3.1.0 installer is 63 MB.
+- **The newer features are in the release you download.** Direct discovery
+  probes, full screen, the codec overlay and reconnecting after a stall were
+  written here first and later contributed to Apra's project, where they were
+  merged into its development branch in October 2026. Apra's latest release
+  (v3.1.0, April 2026) came out before them; here they're in the installer.
+- **Only here:** the port-0 address guard with `discovery.log`, the dropout log
+  `player.log`, and settings kept in your user profile instead of the program
+  folder.
+
+Apra's fork has things this one doesn't: HTTPS/TLS and RTSPS cameras, the ONVIF
+Media2 service (so H.265 cameras are reported as H.265), several saved logins,
+and a code-signed installer. If you need those, use theirs.
+
 ## Installing
 
 Download `ODM-2.4.1-setup.exe` from the [Releases](../../releases) page and run
