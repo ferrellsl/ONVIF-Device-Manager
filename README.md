@@ -1,4 +1,4 @@
-# ONVIF Device Manager (ODM) 2.4 - with H.265
+# ONVIF Device Manager (ODM) 2.5 - with H.265
 
 ODM finds the ONVIF cameras on your network and lets you watch and configure
 them: live video, video encoder settings, imaging, network, users, PTZ, events
@@ -34,14 +34,23 @@ This is that ODM, brought up to date:
   probe, only one sent straight to them. After the usual probe, ODM now also
   probes every address of your local network directly, so those cameras show
   up too (local networks of up to 1024 addresses).
-- **Safe encoder settings.** ODM talks to cameras through the original ONVIF
-  media service, which has no H.265: H.265 cameras report "H264" there. When the
-  encoding a camera reports isn't what it actually streams, the Video streaming
-  page says so and turns Apply off, instead of sending the camera the wrong
-  encoding. Change such a camera's encoding in its own web page.
+- **H.265 encoder settings.** The original ONVIF media service has no H.265, so
+  H.265 cameras report "H264" there. When a camera also offers the newer Media2
+  service, the Video streaming page now uses it: it shows the real encoding,
+  lists H.265 next to H.264 with each encoding's resolutions, and Apply changes
+  the encoding, resolution, frame rate, bitrate, quality and GOV length. Media2
+  can't set an encoding interval, so that slider stays at 1. Settings
+  ODM doesn't show (multicast, session timeout) are sent back to the camera
+  unchanged. Media2 lookups, changes and errors are logged to `media2.log`,
+  beside `player.log`.
+- **Safe encoder settings without Media2.** For a camera without Media2 (or
+  whose Media2 doesn't answer properly), the page works as before through the
+  original service. When the encoding it reports isn't what the camera actually
+  streams, the page says so and turns Apply off, instead of sending the camera
+  the wrong encoding. Change such a camera's encoding in its own web page.
 - **Builds with today's tools:** Visual Studio 2019, .NET Framework 4.8, 64-bit.
 
-![ODM playing an H.265 camera; the Video streaming page warns that the camera reports H264](docs/screenshot.jpg)
+![ODM playing an H.265 camera (taken with 2.4, before Media2: the Video streaming page warns that the camera reports H264)](docs/screenshot.jpg)
 
 ## Why this fork?
 
@@ -62,14 +71,15 @@ differently (as of November 2026):
 - **Only here:** the port-0 address guard with `discovery.log`, the dropout log
   `player.log`, and settings kept in your user profile instead of the program
   folder.
+- **Both have Media2 for H.265 encoder settings** (since 2.5 here), written
+  separately.
 
-Apra's fork has things this one doesn't: HTTPS/TLS and RTSPS cameras, the ONVIF
-Media2 service (so H.265 cameras are reported as H.265), several saved logins,
-and a code-signed installer. If you need those, use theirs.
+Apra's fork has things this one doesn't: HTTPS/TLS and RTSPS cameras, several
+saved logins, and a code-signed installer. If you need those, use theirs.
 
 ## Installing
 
-Download `ODM-2.4.1-setup.exe` from the [Releases](../../releases) page and run
+Download `ODM-2.5.0-setup.exe` from the [Releases](../../releases) page and run
 it. It needs 64-bit Windows 10 or 11 with .NET Framework 4.8 (part of Windows
 10 since the May 2019 update, and of Windows 11). Everything else, including
 FFmpeg and the Visual C++ runtime, comes with it.

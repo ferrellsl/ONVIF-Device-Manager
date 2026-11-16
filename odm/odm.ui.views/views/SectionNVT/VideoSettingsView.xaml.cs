@@ -21,6 +21,14 @@ using utils;
 namespace odm.ui.activities {
 	public partial class VideoSettingsView : UserControl, IDisposable, IPlaybackController {
 
+		public partial class Model {
+			/// <summary>
+			/// Set when the settings came from Media2 (encoderOptions is then null): the
+			/// encoding/resolution pairs the camera offers, H.265 included.
+			/// </summary>
+			public Tuple<VideoEncoding, VideoResolution>[] media2EncoderResolutions { get; set; }
+		}
+
 		#region Activity definition
 		public static FSharpAsync<Result> Show(IUnityContainer container, Model model) {
 			return container.StartViewActivity<Result>(context => {
@@ -111,6 +119,7 @@ namespace odm.ui.activities {
 				VideoEncoding? streamed = null;
 				switch (codec) {
 					case "H.264": streamed = VideoEncoding.h264; break;
+					case "H.265": streamed = VideoEncoding.h265; break;
 					case "MJPEG": streamed = VideoEncoding.jpeg; break;
 					case "MPEG-4": streamed = VideoEncoding.mpeg4; break;
 				}
@@ -197,6 +206,9 @@ namespace odm.ui.activities {
 							//TODO: get rid of hardcode
 							frgnd = new SolidColorBrush(System.Windows.Media.Color.FromArgb(255, 0, 80, 0));
 							break;
+						case VideoEncoding.h265:
+							frgnd = new SolidColorBrush(System.Windows.Media.Color.FromArgb(255, 0, 80, 80));
+							break;
 						case VideoEncoding.jpeg:
 							//TODO: get rid of hardcode
 							frgnd = new SolidColorBrush(System.Windows.Media.Color.FromArgb(255, 0, 0, 80));
@@ -231,6 +243,12 @@ namespace odm.ui.activities {
 			yield return Tuple.Create(
 				model.encoder, model.resolution
 			);
+			if (model.media2EncoderResolutions != null) {
+				foreach (var x in model.media2EncoderResolutions) {
+					yield return x;
+				}
+				yield break;
+			}
 			var opts = model.encoderOptions;
 			if(opts == null){
 				yield break;

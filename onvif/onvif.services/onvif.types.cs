@@ -3625,6 +3625,10 @@ namespace onvif.services {
 
 		[System.Xml.Serialization.XmlEnumAttribute(Name = "H264")]
 		h264,
+
+		/// <summary>Not in Media1's schema: set from Media2 (also accepted from cameras that report it in Media1 anyway).</summary>
+		[System.Xml.Serialization.XmlEnumAttribute(Name = "H265")]
+		h265,
 	}
 
 	[System.SerializableAttribute()]

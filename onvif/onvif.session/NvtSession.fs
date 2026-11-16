@@ -85,6 +85,8 @@
         abstract credentials:NetworkCredential
         abstract deviceUri:Uri
         abstract GetAllCapabilities: unit -> Async<Capabilities>
+        /// Media2 client, or null if the camera doesn't offer the Media2 service.
+        abstract GetMedia2: unit -> Async<Media2Client>
     end
     
     type SecurityUserNameToken(userName:string, password:string, deviceTime:System.DateTime) = class
@@ -339,7 +341,14 @@
             }))
             fun(useTls)->comp(useTls)
         
-        let getPtzFactory = 
+        let getMedia2Factory =
+            let comp = factory_wrapper (fun(useTls)-> Async.Memoize(async{
+                do! Async.SwitchToThreadPool()
+                return NvtSessionFactory.CreateChannelFactory<IMedia2Raw>(false, false, credentials |> NotNull, useTls)
+            }))
+            fun(useTls)->comp(useTls)
+
+        let getPtzFactory =
             let comp = factory_wrapper (fun(useTls)-> Async.Memoize(async{
                 do! Async.SwitchToThreadPool()
                 return NvtSessionFactory.CreateChannelFactory<PTZ>(false, false, credentials |> NotNull, useTls)
@@ -800,7 +809,38 @@
                 })
                 fun()->comp
 
-            let GetImagingClient = 
+            let GetMedia2Client : unit -> Async<Media2Client> =
+                let comp = Async.Memoize(async{
+                    dbg.Info(sprintf "%08X::%s" (sessionId.GetHashCode()) "GetMedia2Client")
+                    try
+                        let! services = GetServices()
+                        let service =
+                            services |> SuppressNull [||] |> Seq.tryFind (fun (s:Service) ->
+                                NotNull(s) && s.Namespace = Media2Client.Tr2 && not(String.IsNullOrWhiteSpace(s.XAddr))
+                            )
+                        match service with
+                        | None ->
+                            Media2Client.Log(sprintf "%s: no Media2 service listed (services: %s)" (deviceUri.Host) (String.Join(" ",
+                                services |> SuppressNull [||] |> Seq.filter NotNull |> Seq.map (fun s -> s.Namespace))))
+                            return null
+                        | Some service ->
+                            do! Async.SwitchToThreadPool()
+                            let! url = FixUrl(new Uri(service.XAddr, UriKind.RelativeOrAbsolute))
+                            let useTls = url.Scheme = Uri.UriSchemeHttps
+                            let! factory = getMedia2Factory(useTls)
+                            let endpointAddr = new EndpointAddress(url)
+                            let proxy = factory.CreateChannel(endpointAddr)
+                            do! SetupUserNameToken(proxy :?> IClientChannel)
+                            return new Media2Client(proxy, MessageVersion.Soap12)
+                    with err ->
+                        // GetServices is optional before ONVIF 2.0; no Media2 then.
+                        dbg.Error(err)
+                        Media2Client.Log(sprintf "%s: GetMedia2Client failed: %s: %s" (deviceUri.Host) (err.GetType().Name) (err.Message))
+                        return null
+                })
+                fun()->comp
+
+            let GetImagingClient =
                 let comp = Async.Memoize(async{
                     dbg.Info(sprintf "%08X::%s" (sessionId.GetHashCode()) "GetImagingClient") 
                     do! Async.SwitchToThreadPool()
@@ -1128,8 +1168,11 @@
                         return new SubscriptionManagerAsync(proxy) :> ISubscriptionManagerAsync
                     }
 
-                    member this.GetAllCapabilities() = 
+                    member this.GetAllCapabilities() =
                         GetAllCapabilities()
+
+                    member this.GetMedia2() =
+                        GetMedia2Client()
 
                 end
 

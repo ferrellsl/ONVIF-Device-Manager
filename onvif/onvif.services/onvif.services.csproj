@@ -67,6 +67,7 @@
     </Compile>
     <Compile Include="onvif.types.cs" />
     <Compile Include="MulticastCapabilitiesBindingElement.cs" />
+    <Compile Include="Media2.cs" />
     <Compile Include="OnvifFactory.cs" />
     <Compile Include="onvif.services.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

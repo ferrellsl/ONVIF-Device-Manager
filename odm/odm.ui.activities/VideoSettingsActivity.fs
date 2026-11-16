@@ -40,10 +40,143 @@ namespace odm.ui.activities
             do! ErrorView.Show(ctx, err) |> Async.Ignore
         }
 
-        let load() = async{
-            //let origin = model.origin
+        /// True when the page was loaded from Media2, so Apply must use Media2 too.
+        let usingMedia2 = ref false
 
+        /// The profile's encoder seen through Media2 (which, unlike Media1, can say H.265):
+        /// Some(client, configuration, options per encoding), or None to use Media1 - also
+        /// when the camera's Media2 is missing or misbehaves, so this page never gets worse.
+        let getMedia2(vecToken:string) = async{
+            try
+                let! m2 = session.GetMedia2()
+                if m2 |> IsNull then
+                    return None
+                else
+                    do! Async.SwitchToThreadPool()
+                    let cfg =
+                        let byToken =
+                            try m2.GetVideoEncoderConfigurations(vecToken, null) |> Array.tryFind (fun c -> NotNull(c) && c.token = vecToken)
+                            with err -> dbg.Error(err); None
+                        match byToken with
+                        | Some _ -> byToken
+                        | None -> m2.GetVideoEncoderConfigurations(null, profToken) |> Array.tryFind NotNull
+                    match cfg with
+                    | Some cfg when cfg.encoding.HasValue && NotNull(cfg.resolution) ->
+                        let opts =
+                            try m2.GetVideoEncoderConfigurationOptions(cfg.token, profToken)
+                            with err -> dbg.Error(err); m2.GetVideoEncoderConfigurationOptions(cfg.token, null)
+                        let opts = opts |> Array.filter (fun o -> NotNull(o) && o.encoding.HasValue && o.resolutions.Length > 0)
+                        if opts.Length = 0 then
+                            Media2Client.Log(sprintf "%s: no usable Media2 encoder options -> Media1; reply: %s" session.deviceUri.Host m2.LastReply)
+                            return None
+                        else
+                            Media2Client.Log(sprintf "%s: using Media2: %s %dx%d, options: %s" session.deviceUri.Host cfg.encodingName cfg.resolution.width cfg.resolution.height (String.Join(" ", opts |> Seq.map (fun o -> o.encodingName))))
+                            return Some(m2, cfg, opts)
+                    | _ ->
+                        Media2Client.Log(sprintf "%s: no usable Media2 encoder configuration for token %s -> Media1; reply: %s" session.deviceUri.Host vecToken m2.LastReply)
+                        return None
+            with err ->
+                dbg.Error(err)
+                Media2Client.Log(sprintf "%s: Media2 failed -> Media1: %s: %s" session.deviceUri.Host (err.GetType().Name) err.Message)
+                return None
+        }
+
+        let loadMedia2(cfg:Media2VideoEncoderConfiguration, opts:Media2VideoEncoderOptions[]) =
+            let span (values:seq<'a>) (fallback:'a*'a) =
+                if Seq.isEmpty values then fallback else (Seq.min values, Seq.max values)
+            let ranges (pick:Media2VideoEncoderOptions->IntRange) =
+                opts |> Seq.map pick |> Seq.filter NotNull |> Seq.toList
+
+            let frameRate = float(cfg.frameRateLimit)
+            let (minFrameRate, maxFrameRate) =
+                let (lo, hi) = span (opts |> Seq.collect (fun o -> o.frameRates) |> Seq.map float) (frameRate, frameRate)
+                (int(Math.Floor(lo)), int(Math.Ceiling(hi)))
+            let (minBitrate, maxBitrate) =
+                match ranges (fun o -> o.bitrateRange) with
+                | [] -> (0, Int32.MaxValue)
+                | rs -> (rs |> Seq.map (fun r -> r.min) |> Seq.min, rs |> Seq.map (fun r -> r.max) |> Seq.max)
+            let (minGovLength, maxGovLength) =
+                match ranges (fun o -> o.govLengthRange) with
+                | [] -> (cfg.govLength, cfg.govLength)
+                | rs -> (rs |> Seq.map (fun r -> r.min) |> Seq.min, rs |> Seq.map (fun r -> r.max) |> Seq.max)
+            let (minQuality, maxQuality) =
+                let qs = opts |> Seq.filter (fun o -> o.qualityMin >= 0.0f && o.qualityMax >= o.qualityMin)
+                if Seq.isEmpty qs then (-1, -1)
+                else (int(qs |> Seq.map (fun o -> o.qualityMin) |> Seq.min), int(Math.Ceiling(float(qs |> Seq.map (fun o -> o.qualityMax) |> Seq.max))))
+
+            let model = new VideoSettingsView.Model(
+                minQuality = minQuality,
+                maxQuality = maxQuality,
+                minBitrate = minBitrate,
+                maxBitrate = maxBitrate,
+                // Media2 has no encoding interval: every frame is encoded.
+                minEncodingInterval = 1,
+                maxEncodingInterval = 1,
+                minFrameRate = minFrameRate,
+                maxFrameRate = maxFrameRate,
+                minGovLength = minGovLength,
+                maxGovLength = maxGovLength,
+                encoderOptions = null,
+                profToken = profToken
+            )
+            model.media2EncoderResolutions <-
+                opts |> Array.collect (fun o -> o.resolutions |> Array.map (fun r -> Tuple.Create(o.encoding.Value, r)))
+
+            model.encoder <- cfg.encoding.Value
+            model.resolution <- cfg.resolution
+            model.frameRate <- frameRate
+            model.govLength <- cfg.govLength
+            model.encodingInterval <- 1
+            model.quality <- cfg.quality
+            model.bitrate <- float(cfg.bitrateLimit)
+
+            model.AcceptChanges()
+            model
+
+        let apply_media2(model:VideoSettingsView.Model) = async{
             let! profile = session.GetProfile(profToken)
+            let! m2 = getMedia2(profile.videoEncoderConfiguration |> IfNotNull (fun x -> x.token))
+            match m2 with
+            | None ->
+                return raise (new Exception("The camera's Media2 service did not answer, so the settings were not applied."))
+            | Some(client, cfg, opts) ->
+                let opt =
+                    opts |> Array.tryFind (fun o ->
+                        o.encoding.Value = model.encoder && (o.resolutions |> Array.exists (fun r -> r.Equals(model.resolution)))
+                    )
+                match opt with
+                | None ->
+                    return false
+                | Some o ->
+                    let frameRate =
+                        if o.frameRates.Length > 0 then
+                            // only listed rates are allowed: take the nearest
+                            o.frameRates |> Array.minBy (fun f -> abs(float(f) - model.frameRate))
+                        else
+                            float32(model.frameRate)
+                    let quality =
+                        if o.qualityMin >= 0.0f && o.qualityMax >= o.qualityMin then
+                            model.quality |> Math.Coerce o.qualityMin o.qualityMax
+                        else
+                            model.quality
+                    let bitrate =
+                        if o.bitrateRange |> NotNull then
+                            int(model.bitrate) |> Math.Coerce o.bitrateRange.min o.bitrateRange.max
+                        else
+                            int(model.bitrate)
+                    let govLength =
+                        if o.govLengthRange |> NotNull then
+                            model.govLength |> Math.Coerce o.govLengthRange.min o.govLengthRange.max
+                        else
+                            -1
+                    do! Async.SwitchToThreadPool()
+                    client.SetVideoEncoderConfiguration(cfg, o, model.resolution, quality, frameRate, bitrate, govLength)
+                    Media2Client.Log(sprintf "%s: set %s %dx%d, %g fps, %d kbps, quality %g, GOV %d" session.deviceUri.Host o.encodingName model.resolution.width model.resolution.height frameRate bitrate quality govLength)
+                    model.AcceptChanges()
+                    return true
+        }
+
+        let loadMedia1(profile:Profile) = async{
             //let! profiles = session.GetProfiles()
             //let profile = profiles |> Seq.find (fun p-> p.token = profileToken)
             
@@ -198,7 +331,19 @@ namespace odm.ui.activities
             return model
         }
 
-        let apply_changes(model:VideoSettingsView.Model) = async{
+        let load() = async{
+            let! profile = session.GetProfile(profToken)
+            let! m2 = getMedia2(profile.videoEncoderConfiguration |> IfNotNull (fun x -> x.token))
+            match m2 with
+            | Some(_, cfg, opts) ->
+                usingMedia2 := true
+                return loadMedia2(cfg, opts)
+            | None ->
+                usingMedia2 := false
+                return! loadMedia1(profile)
+        }
+
+        let apply_media1(model:VideoSettingsView.Model) = async{
             
             //let! profiles = session.GetProfiles()
             //let profile = profiles |> Seq.find (fun p-> p.token = profToken)
@@ -271,6 +416,9 @@ namespace odm.ui.activities
 
             return isVecConfigured
         }
+
+        let apply_changes(model:VideoSettingsView.Model) =
+            if !usingMedia2 then apply_media2(model) else apply_media1(model)
         
         member private this.Main() = async{
             let! cont = async{

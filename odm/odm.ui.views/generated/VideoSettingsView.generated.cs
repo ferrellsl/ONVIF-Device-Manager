@@ -32,7 +32,7 @@ namespace odm.ui.activities {
 			VideoEncoding encoder{get;set;}
 			
 		}
-		public class Model: IModelAccessor, INotifyPropertyChanged{
+		public partial class Model: IModelAccessor, INotifyPropertyChanged{
 			
 			public Model(
 				string profToken, int maxFrameRate, int minFrameRate, int maxEncodingInterval, int minEncodingInterval, int maxQuality, int minQuality, int maxBitrate, int minBitrate, int maxGovLength, int minGovLength, VideoEncoderConfigurationOptions encoderOptions
